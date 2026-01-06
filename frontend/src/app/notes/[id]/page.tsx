@@ -178,6 +178,12 @@ export default function NoteViewPage() {
   };
 
   const handleSave = async (newTopics: string[], newPrerequisites: string[]) => {
+    // Validate that current note is not in prerequisites
+    if (newPrerequisites.includes(noteId)) {
+      alert('A note cannot be a prerequisite of itself');
+      return;
+    }
+
     const filteredBlocks = blocks.filter((block) => {
       if (block.type === 'image') return true;
       if (block.value.trim()) return true;

@@ -39,11 +39,18 @@ const createNote = async (req, res, next) => {
   try {
     const { title, blocks, topics, prerequisites } = req.body;
 
+    // Validate prerequisites: filter out any invalid IDs and ensure no self-reference
+    const validPrerequisites = (prerequisites || []).filter(prereqId => {
+      // Note: At creation time, the note doesn't have an _id yet, so we can't check for self-reference
+      // This will be handled by the updateNote function
+      return prereqId && prereqId.toString().match(/^[0-9a-fA-F]{24}$/);
+    });
+
     const note = await Note.create({
       title,
       blocks: blocks || [{ type: 'text', value: '' }],
       topics: topics || [],
-      prerequisites: prerequisites || [],
+      prerequisites: validPrerequisites,
     });
 
     const populatedNote = await Note.findById(note._id)
@@ -61,10 +68,26 @@ const createNote = async (req, res, next) => {
 const updateNote = async (req, res, next) => {
   try {
     const { title, blocks, topics, prerequisites } = req.body;
+    const noteId = req.params.id;
+
+    // Validate prerequisites: filter out self-reference and invalid IDs
+    const validPrerequisites = (prerequisites || []).filter(prereqId => {
+      const prereqIdStr = prereqId.toString();
+      const noteIdStr = noteId.toString();
+      // Remove self-reference
+      if (prereqIdStr === noteIdStr) {
+        return false;
+      }
+      // Validate ObjectId format
+      return prereqIdStr.match(/^[0-9a-fA-F]{24}$/);
+    });
+
+    // Remove duplicates
+    const uniquePrerequisites = [...new Set(validPrerequisites)];
 
     const note = await Note.findByIdAndUpdate(
-      req.params.id,
-      { title, blocks, topics, prerequisites },
+      noteId,
+      { title, blocks, topics, prerequisites: uniquePrerequisites },
       { new: true, runValidators: true }
     )
       .populate('topics', 'name')

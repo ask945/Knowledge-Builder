@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import NoteCard from '@/components/NoteCard';
 import GraphView from '@/components/GraphView';
 import SaveModal from '@/components/SaveModal';
+import SummarySidebar from '@/components/SummarySidebar';
 import { notesApi, graphApi, type Note, type GraphData, type Topic } from '@/lib/api';
 
 export default function Home() {
@@ -21,6 +22,10 @@ export default function Home() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; note: Note } | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [showSummarySidebar, setShowSummarySidebar] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryTitle, setSummaryTitle] = useState<string>('AI Summary');
 
   // Fetch notes and topics
   useEffect(() => {
@@ -246,7 +251,7 @@ export default function Home() {
                     key={note._id}
                     onClick={() => router.push(`/notes/${note._id}`)}
                     onContextMenu={(e) => handleContextMenu(e, note)}
-                    className="cursor-pointer"
+                    className={viewMode === 'grid' ? 'cursor-pointer h-full' : 'cursor-pointer'}
                   >
                     <NoteCard
                       title={note.title}
@@ -262,37 +267,73 @@ export default function Home() {
         ) : (
           /* Graph View */
           <div className="flex-1 flex flex-col -m-8">
-            {/* Topic Selector */}
-            <div className="p-6 bg-white border-b border-[#D2E9E9] flex items-center gap-4 shadow-sm">
-              <span className="text-sm font-medium text-[#38598b]">Filter by Topic:</span>
-              <select
-                value={selectedTopic || ''}
-                onChange={(e) => setSelectedTopic(e.target.value || null)}
-                className="px-4 py-2.5 border border-[#D2E9E9] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#C4DFDF] focus:border-[#C4DFDF] text-gray-700 shadow-sm"
-              >
-                <option value="">All Topics</option>
-                {topics.map(topic => (
-                  <option key={topic._id} value={topic._id}>
-                    {topic.name}
-                  </option>
-                ))}
-              </select>
-              {selectedTopic && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#E3F4F4] rounded-lg">
-                  <span className="text-sm text-[#38598b] font-medium">
-                    Showing: {topics.find(t => t._id === selectedTopic)?.name}
-                  </span>
-                  <button
-                    onClick={() => setSelectedTopic(null)}
-                    className="text-[#38598b] hover:text-[#2a4569] text-sm"
+            <div className="flex flex-1">
+              <div className="flex-1 flex flex-col">
+                {/* Topic Selector */}
+                <div className="p-6 bg-white border-b border-[#D2E9E9] flex items-center gap-4 shadow-sm">
+                  <span className="text-sm font-medium text-[#38598b]">Filter by Topic:</span>
+                  <select
+                    value={selectedTopic || ''}
+                    onChange={(e) => setSelectedTopic(e.target.value || null)}
+                    className="px-4 py-2.5 border border-[#D2E9E9] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#C4DFDF] focus:border-[#C4DFDF] text-gray-700 shadow-sm"
                   >
-                    ×
-                  </button>
+                    <option value="">All Topics</option>
+                    {topics.map(topic => (
+                      <option key={topic._id} value={topic._id}>
+                        {topic.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedTopic && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-[#E3F4F4] rounded-lg">
+                      <span className="text-sm text-[#38598b] font-medium">
+                        Showing: {topics.find(t => t._id === selectedTopic)?.name}
+                      </span>
+                      <button
+                        onClick={() => setSelectedTopic(null)}
+                        className="text-[#38598b] hover:text-[#2a4569] text-sm"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="flex-1">
-              <GraphView data={graphData} onGraphChange={fetchGraph} />
+                <div className="flex-1">
+                  <GraphView
+                    data={graphData}
+                    onGraphChange={fetchGraph}
+                    onSummarize={(nodeType, nodeId, nodeName) => {
+                      setShowSummarySidebar(true);
+                      setSummary(null);
+                      setSummaryLoading(true);
+                      setSummaryTitle(`AI Summary: ${nodeName}`);
+                      
+                      graphApi.summarize(nodeType, nodeId)
+                        .then(result => {
+                          setSummary(result.summary);
+                        })
+                        .catch(error => {
+                          console.error('Failed to generate summary:', error);
+                          setSummary('Failed to generate summary. Please make sure GEMINI_API_KEY is set in the backend environment variables.');
+                        })
+                        .finally(() => {
+                          setSummaryLoading(false);
+                        });
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Summary Sidebar */}
+              <SummarySidebar
+                isOpen={showSummarySidebar}
+                onClose={() => {
+                  setShowSummarySidebar(false);
+                  setSummary(null);
+                }}
+                summary={summary}
+                loading={summaryLoading}
+                title={summaryTitle}
+              />
             </div>
           </div>
         )}

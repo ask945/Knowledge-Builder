@@ -7,11 +7,11 @@ interface NoteCardProps {
 
 export default function NoteCard({ title, content, linkCount = 0, linkedTopic }: NoteCardProps) {
   return (
-    <div className="border border-[#D2E9E9] rounded-xl p-5 bg-white hover:shadow-lg hover:border-[#C4DFDF] transition-all duration-200 cursor-pointer group">
+    <div className="border border-[#D2E9E9] rounded-xl p-5 bg-white hover:shadow-lg hover:border-[#C4DFDF] transition-all duration-200 cursor-pointer group h-full flex flex-col">
       <h3 className="font-semibold text-[#38598b] text-lg mb-2 group-hover:text-[#2a4569] transition-colors">
         {title}
       </h3>
-      <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
+      <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 flex-grow">
         {content || 'No content'}
       </p>
       {(linkedTopic || linkCount > 0) && (

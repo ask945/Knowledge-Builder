@@ -69,6 +69,19 @@ export default function AddLinkModal({
       alert('Please select at least one link (prerequisite or next)');
       return;
     }
+    
+    // Validate that current note is not selected as its own prerequisite
+    if (currentNoteId && selectedPrerequisiteId === currentNoteId) {
+      alert('A note cannot be a prerequisite of itself');
+      return;
+    }
+    
+    // Validate that current note is not selected as its own next
+    if (currentNoteId && selectedNextId === currentNoteId) {
+      alert('A note cannot be a next note of itself');
+      return;
+    }
+    
     onSave(selectedPrerequisiteId, selectedNextId);
   };
 

@@ -11,6 +11,7 @@ import AddLinkModal from './AddLinkModal';
 interface GraphViewProps {
   data: GraphData;
   onGraphChange?: () => void;
+  onSummarize?: (nodeType: 'topic' | 'note', nodeId: string, nodeName: string) => void;
 }
 
 const nodeStyles: Record<string, { bg: string; border: string; text: string }> = {
@@ -26,7 +27,7 @@ interface HoverMenu {
   showSubmenu?: boolean;
 }
 
-export default function GraphView({ data, onGraphChange }: GraphViewProps) {
+export default function GraphView({ data, onGraphChange, onSummarize }: GraphViewProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoverMenu, setHoverMenu] = useState<HoverMenu | null>(null);
@@ -438,6 +439,22 @@ export default function GraphView({ data, onGraphChange }: GraphViewProps) {
     }
   };
 
+  const handleSummarize = () => {
+    if (!hoverMenu || !onSummarize) return;
+    const node = hoverMenu.node;
+    
+    setHoverMenu(null);
+    
+    let nodeId: string;
+    if (node.type === 'topic') {
+      nodeId = node.id;
+    } else {
+      nodeId = getNoteId(node);
+    }
+    
+    onSummarize(node.type, nodeId, node.name);
+  };
+
   const handleSaveTopics = async (topics: string[]) => {
     if (!currentNoteForEdit) return;
 
@@ -468,6 +485,12 @@ export default function GraphView({ data, onGraphChange }: GraphViewProps) {
 
       // Handle prerequisite: Add the selected note as a prerequisite to the current note
       if (prerequisiteId) {
+        // Validate that current note is not being added as its own prerequisite
+        if (prerequisiteId === updatedCurrentNote._id) {
+          alert('A note cannot be a prerequisite of itself');
+          return;
+        }
+        
         const existingPrereqIds = updatedCurrentNote.prerequisites.map(p => p._id);
         if (existingPrereqIds.includes(prerequisiteId)) {
           alert('This note is already a prerequisite');
@@ -486,6 +509,12 @@ export default function GraphView({ data, onGraphChange }: GraphViewProps) {
 
       // Handle next: Add the current note as a prerequisite to the selected next note
       if (nextId) {
+        // Validate that current note is not being added as its own next
+        if (nextId === updatedCurrentNote._id) {
+          alert('A note cannot be a next note of itself');
+          return;
+        }
+        
         const nextNote = await notesApi.getById(nextId);
         const existingPrereqIds = nextNote.prerequisites.map(p => p._id);
         if (existingPrereqIds.includes(updatedCurrentNote._id)) {
@@ -618,6 +647,19 @@ export default function GraphView({ data, onGraphChange }: GraphViewProps) {
             </>
           )}
 
+          {/* Summarize with AI - available for both topic and note nodes */}
+          <div
+            className={`px-4 py-2.5 cursor-pointer flex items-center gap-2.5 text-gray-700 hover:bg-gray-50 transition-colors ${
+              hoverMenu.node.type === 'topic' ? 'rounded-t-lg' : ''
+            }`}
+            onClick={handleSummarize}
+          >
+            <span className="text-base">🤖</span>
+            <span className="text-sm font-medium">Summarize with AI</span>
+          </div>
+
+          {hoverMenu.node.type !== 'topic' && <div className="border-t border-gray-200 my-1"></div>}
+
           {/* Add note - conditional rendering based on node type */}
           {hoverMenu.node.type === 'topic' ? (
             // Topic node - show direct "Add note" option
@@ -690,6 +732,7 @@ export default function GraphView({ data, onGraphChange }: GraphViewProps) {
           currentNoteId={currentNoteForEdit._id}
         />
       )}
+
     </div>
   );
 }

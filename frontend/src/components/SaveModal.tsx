@@ -100,6 +100,13 @@ export default function SaveModal({
       alert('Please select at least one parent topic');
       return;
     }
+    
+    // Validate that current note is not in prerequisites
+    if (currentNoteId && selectedPrereqs.some(p => p._id === currentNoteId)) {
+      alert('A note cannot be a prerequisite of itself');
+      return;
+    }
+    
     onSave(
       selectedTopics.map(t => t._id),
       selectedPrereqs.map(p => p._id)
