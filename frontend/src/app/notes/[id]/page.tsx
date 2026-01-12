@@ -2,13 +2,21 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { notesApi, ContentBlock, Topic } from '@/lib/api';
+import { notesApi, ContentBlock, Topic, setAuthTokenGetter } from '@/lib/api';
 import SaveModal from '@/components/SaveModal';
+import { useAuth } from '@/contexts/AuthContext';
+import LoginPage from '@/components/LoginPage';
 
 export default function NoteViewPage() {
   const router = useRouter();
   const params = useParams();
   const noteId = params.id as string;
+  const { user, loading: authLoading, getToken } = useAuth();
+
+  // Set up auth token getter for API calls
+  useEffect(() => {
+    setAuthTokenGetter(getToken);
+  }, [getToken]);
 
   const [title, setTitle] = useState('');
   const [blocks, setBlocks] = useState<ContentBlock[]>([{ type: 'text', value: '' }]);
@@ -220,6 +228,21 @@ export default function NoteViewPage() {
       alert('Failed to delete note');
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen bg-[#F8F6F4] items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#38598b] mb-4"></div>
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
 
   if (loading) {
     return (

@@ -6,7 +6,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 // @route   GET /api/graph/topics
 const getGraphTopics = async (req, res, next) => {
   try {
-    const topics = await Topic.find().sort({ name: 1 });
+    const topics = await Topic.find({ user: req.user._id }).sort({ name: 1 });
     res.json({ success: true, data: topics });
   } catch (error) {
     next(error);
@@ -19,14 +19,14 @@ const getGraphByTopic = async (req, res, next) => {
   try {
     const { topicId } = req.params;
 
-    // Get the topic
-    const topic = await Topic.findById(topicId);
+    // Get the topic (must belong to user)
+    const topic = await Topic.findOne({ _id: topicId, user: req.user._id });
     if (!topic) {
       return res.status(404).json({ success: false, error: 'Topic not found' });
     }
 
-    // Get all notes that belong to this topic
-    const notes = await Note.find({ topics: topicId })
+    // Get all notes that belong to this topic and user
+    const notes = await Note.find({ topics: topicId, user: req.user._id })
       .select('_id title prerequisites')
       .populate('prerequisites', '_id title topics');
 
@@ -109,8 +109,8 @@ const getGraphByTopic = async (req, res, next) => {
 // @route   GET /api/graph
 const getGraph = async (req, res, next) => {
   try {
-    const topics = await Topic.find();
-    const notes = await Note.find()
+    const topics = await Topic.find({ user: req.user._id });
+    const notes = await Note.find({ user: req.user._id })
       .select('_id title topics prerequisites')
       .populate('prerequisites', '_id topics');
 
@@ -208,13 +208,13 @@ const summarizeWithAI = async (req, res, next) => {
 
     if (nodeType === 'topic') {
       // For topic nodes: analyze the entire knowledge graph for this topic
-      const topic = await Topic.findById(nodeId);
+      const topic = await Topic.findOne({ _id: nodeId, user: req.user._id });
       if (!topic) {
         return res.status(404).json({ success: false, error: 'Topic not found' });
       }
 
       // Get all notes that belong to this topic (with full content)
-      const notes = await Note.find({ topics: nodeId })
+      const notes = await Note.find({ topics: nodeId, user: req.user._id })
         .populate('topics', 'name')
         .populate('prerequisites', '_id title topics');
 
@@ -227,7 +227,7 @@ const summarizeWithAI = async (req, res, next) => {
       });
 
       const prerequisiteNotes = prerequisiteIds.size > 0
-        ? await Note.find({ _id: { $in: Array.from(prerequisiteIds) } })
+        ? await Note.find({ _id: { $in: Array.from(prerequisiteIds) }, user: req.user._id })
             .populate('topics', 'name')
         : [];
 
@@ -278,7 +278,7 @@ Summary:`;
       contextData = { topic, notes, prerequisiteNotes };
     } else if (nodeType === 'note') {
       // For note nodes: focus on the specific note with its prerequisites
-      const note = await Note.findById(nodeId)
+      const note = await Note.findOne({ _id: nodeId, user: req.user._id })
         .populate('topics', 'name')
         .populate('prerequisites', '_id title topics');
       
@@ -288,7 +288,7 @@ Summary:`;
 
       // Get prerequisite notes with full content
       const prerequisiteNotes = note.prerequisites.length > 0
-        ? await Note.find({ _id: { $in: note.prerequisites.map(p => p._id) } })
+        ? await Note.find({ _id: { $in: note.prerequisites.map(p => p._id) }, user: req.user._id })
             .populate('topics', 'name')
         : [];
 

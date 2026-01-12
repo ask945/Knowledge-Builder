@@ -10,10 +10,13 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-app.use('/api/notes', require('./routes/notes'));
-app.use('/api/links', require('./routes/links'));
-app.use('/api/topics', require('./routes/topics'));
-app.use('/api/graph', require('./routes/graph'));
+const auth = require('./middleware/auth');
+
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/notes', auth, require('./routes/notes'));
+app.use('/api/links', auth, require('./routes/links'));
+app.use('/api/topics', auth, require('./routes/topics'));
+app.use('/api/graph', auth, require('./routes/graph'));
 
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'API is running' });

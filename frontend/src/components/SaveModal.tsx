@@ -36,8 +36,8 @@ export default function SaveModal({
   useEffect(() => {
     if (isOpen && !hasInitialized.current) {
       hasInitialized.current = true;
-      setSelectedTopics(initialTopics);
-      setSelectedPrereqs(initialPrerequisites);
+      setSelectedTopics((initialTopics || []).filter(t => t && t._id && t.name));
+      setSelectedPrereqs((initialPrerequisites || []).filter(p => p && p._id && p.title));
       fetchData();
     }
 
@@ -53,10 +53,12 @@ export default function SaveModal({
         topicsApi.getAll(),
         notesApi.getAll(),
       ]);
-      setTopics(topicsData);
-      setNotes(notesData.filter(n => n._id !== currentNoteId));
+      setTopics(topicsData || []);
+      setNotes((notesData || []).filter(n => n._id !== currentNoteId));
     } catch (error) {
       console.error('Failed to fetch data:', error);
+      setTopics([]);
+      setNotes([]);
     } finally {
       setLoading(false);
     }
@@ -68,8 +70,8 @@ export default function SaveModal({
     setCreatingTopic(true);
     try {
       const newTopic = await topicsApi.create(topicSearch.trim());
-      setTopics([...topics, newTopic]);
-      setSelectedTopics([...selectedTopics, newTopic]);
+      setTopics([...(topics || []), newTopic]);
+      setSelectedTopics([...(selectedTopics || []), newTopic]);
       setTopicSearch('');
     } catch (error) {
       console.error('Failed to create topic:', error);
@@ -80,49 +82,51 @@ export default function SaveModal({
   };
 
   const toggleTopic = (topic: Topic) => {
-    if (selectedTopics.some(t => t._id === topic._id)) {
-      setSelectedTopics(selectedTopics.filter(t => t._id !== topic._id));
+    if (!topic || !topic._id) return;
+    if ((selectedTopics || []).some(t => t && t._id === topic._id)) {
+      setSelectedTopics((selectedTopics || []).filter(t => t && t._id !== topic._id));
     } else {
-      setSelectedTopics([...selectedTopics, topic]);
+      setSelectedTopics([...(selectedTopics || []), topic]);
     }
   };
 
   const togglePrereq = (note: Note) => {
-    if (selectedPrereqs.some(p => p._id === note._id)) {
-      setSelectedPrereqs(selectedPrereqs.filter(p => p._id !== note._id));
+    if (!note || !note._id) return;
+    if ((selectedPrereqs || []).some(p => p && p._id === note._id)) {
+      setSelectedPrereqs((selectedPrereqs || []).filter(p => p && p._id !== note._id));
     } else {
-      setSelectedPrereqs([...selectedPrereqs, { _id: note._id, title: note.title }]);
+      setSelectedPrereqs([...(selectedPrereqs || []), { _id: note._id, title: note.title || '' }]);
     }
   };
 
   const handleSave = () => {
-    if (selectedTopics.length === 0) {
+    if ((selectedTopics || []).length === 0) {
       alert('Please select at least one parent topic');
       return;
     }
     
     // Validate that current note is not in prerequisites
-    if (currentNoteId && selectedPrereqs.some(p => p._id === currentNoteId)) {
+    if (currentNoteId && (selectedPrereqs || []).some(p => p._id === currentNoteId)) {
       alert('A note cannot be a prerequisite of itself');
       return;
     }
     
     onSave(
-      selectedTopics.map(t => t._id),
-      selectedPrereqs.map(p => p._id)
+      (selectedTopics || []).filter(t => t && t._id).map(t => t._id),
+      (selectedPrereqs || []).filter(p => p && p._id).map(p => p._id)
     );
   };
 
-  const filteredTopics = topics.filter(t =>
-    t.name.toLowerCase().includes(topicSearch.toLowerCase())
+  const filteredTopics = (topics || []).filter(t =>
+    t && t.name && t.name.toLowerCase().includes(topicSearch.toLowerCase())
   );
 
-  const filteredNotes = notes.filter(n =>
-    n.title.toLowerCase().includes(prereqSearch.toLowerCase())
+  const filteredNotes = (notes || []).filter(n =>
+    n && n.title && n.title.toLowerCase().includes(prereqSearch.toLowerCase())
   );
 
   const showCreateTopic = topicSearch.trim() &&
-    !topics.some(t => t.name.toLowerCase() === topicSearch.toLowerCase());
+    !(topics || []).some(t => t && t.name && t.name.toLowerCase() === topicSearch.toLowerCase());
 
   if (!isOpen) return null;
 
@@ -174,17 +178,17 @@ export default function SaveModal({
                 {filteredTopics.length === 0 ? (
                   <p className="p-3 text-gray-500 text-sm">No topics found. Type to create one.</p>
                 ) : (
-                  filteredTopics.map(topic => (
+                  filteredTopics.filter(t => t && t._id && t.name).map(topic => (
                     <div
                       key={topic._id}
                       onClick={() => toggleTopic(topic)}
                       className={`px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-gray-50 ${
-                        selectedTopics.some(t => t._id === topic._id) ? 'bg-[#E3F4F4]' : ''
+                        (selectedTopics || []).some(t => t && t._id === topic._id) ? 'bg-[#E3F4F4]' : ''
                       }`}
                     >
                       <input
                         type="checkbox"
-                        checked={selectedTopics.some(t => t._id === topic._id)}
+                        checked={(selectedTopics || []).some(t => t && t._id === topic._id)}
                         onChange={() => {}}
                         className="accent-[#38598b]"
                       />
@@ -195,9 +199,9 @@ export default function SaveModal({
               </div>
 
               {/* Selected topics */}
-              {selectedTopics.length > 0 && (
+              {(selectedTopics || []).filter(t => t && t._id && t.name).length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {selectedTopics.map(topic => (
+                  {(selectedTopics || []).filter(t => t && t._id && t.name).map(topic => (
                     <span
                       key={topic._id}
                       className="px-2 py-1 bg-[#C4DFDF] text-[#38598b] rounded-full text-sm flex items-center gap-1 font-medium"
@@ -233,17 +237,17 @@ export default function SaveModal({
                 {filteredNotes.length === 0 ? (
                   <p className="p-3 text-gray-500 text-sm">No notes found</p>
                 ) : (
-                  filteredNotes.map(note => (
+                  filteredNotes.filter(n => n && n._id && n.title).map(note => (
                     <div
                       key={note._id}
                       onClick={() => togglePrereq(note)}
                       className={`px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-gray-50 ${
-                        selectedPrereqs.some(p => p._id === note._id) ? 'bg-indigo-50' : ''
+                        (selectedPrereqs || []).some(p => p && p._id === note._id) ? 'bg-indigo-50' : ''
                       }`}
                     >
                       <input
                         type="checkbox"
-                        checked={selectedPrereqs.some(p => p._id === note._id)}
+                        checked={(selectedPrereqs || []).some(p => p && p._id === note._id)}
                         onChange={() => {}}
                         className="accent-indigo-500"
                       />
@@ -254,16 +258,16 @@ export default function SaveModal({
               </div>
 
               {/* Selected prerequisites */}
-              {selectedPrereqs.length > 0 && (
+              {(selectedPrereqs || []).filter(p => p && p._id && p.title).length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {selectedPrereqs.map(prereq => (
+                  {(selectedPrereqs || []).filter(p => p && p._id && p.title).map(prereq => (
                     <span
                       key={prereq._id}
                       className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm flex items-center gap-1"
                     >
                       {prereq.title}
                       <button
-                        onClick={() => setSelectedPrereqs(selectedPrereqs.filter(p => p._id !== prereq._id))}
+                        onClick={() => setSelectedPrereqs((selectedPrereqs || []).filter(p => p && p._id !== prereq._id))}
                         className="hover:text-indigo-900"
                       >
                         ×
@@ -293,7 +297,7 @@ export default function SaveModal({
             </button>
             <button
               onClick={handleSave}
-              disabled={selectedTopics.length === 0}
+              disabled={(selectedTopics || []).length === 0}
               className="px-4 py-2 bg-[#38598b] text-white rounded-lg hover:bg-[#2a4569] transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md hover:shadow-lg"
             >
               Save Note

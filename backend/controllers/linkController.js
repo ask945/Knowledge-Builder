@@ -5,7 +5,7 @@ const Note = require('../models/Note');
 // @route   GET /api/links
 const getLinks = async (req, res, next) => {
   try {
-    const links = await Link.find();
+    const links = await Link.find({ user: req.user._id });
     res.json({ success: true, data: links });
   } catch (error) {
     next(error);
@@ -18,9 +18,9 @@ const createLink = async (req, res, next) => {
   try {
     const { source, target } = req.body;
 
-    // Validate that both notes exist
-    const sourceNote = await Note.findById(source);
-    const targetNote = await Note.findById(target);
+    // Validate that both notes exist and belong to user
+    const sourceNote = await Note.findOne({ _id: source, user: req.user._id });
+    const targetNote = await Note.findOne({ _id: target, user: req.user._id });
 
     if (!sourceNote) {
       return res.status(404).json({ success: false, error: 'Source note not found' });
@@ -31,12 +31,12 @@ const createLink = async (req, res, next) => {
     }
 
     // Check if link already exists
-    const existingLink = await Link.findOne({ source, target });
+    const existingLink = await Link.findOne({ source, target, user: req.user._id });
     if (existingLink) {
       return res.status(400).json({ success: false, error: 'Link already exists' });
     }
 
-    const link = await Link.create({ source, target });
+    const link = await Link.create({ source, target, user: req.user._id });
 
     res.status(201).json({ success: true, data: link });
   } catch (error) {
@@ -48,7 +48,7 @@ const createLink = async (req, res, next) => {
 // @route   DELETE /api/links/:id
 const deleteLink = async (req, res, next) => {
   try {
-    const link = await Link.findByIdAndDelete(req.params.id);
+    const link = await Link.findOneAndDelete({ _id: req.params.id, user: req.user._id });
 
     if (!link) {
       return res.status(404).json({ success: false, error: 'Link not found' });

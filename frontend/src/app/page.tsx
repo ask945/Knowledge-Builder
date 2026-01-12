@@ -7,10 +7,18 @@ import NoteCard from '@/components/NoteCard';
 import GraphView from '@/components/GraphView';
 import SaveModal from '@/components/SaveModal';
 import SummarySidebar from '@/components/SummarySidebar';
-import { notesApi, graphApi, type Note, type GraphData, type Topic } from '@/lib/api';
+import LoginPage from '@/components/LoginPage';
+import { useAuth } from '@/contexts/AuthContext';
+import { notesApi, graphApi, setAuthTokenGetter, type Note, type GraphData, type Topic } from '@/lib/api';
 
 export default function Home() {
   const router = useRouter();
+  const { user, loading: authLoading, logout, getToken } = useAuth();
+
+  // Set up auth token getter for API calls
+  useEffect(() => {
+    setAuthTokenGetter(getToken);
+  }, [getToken]);
   const [activeView, setActiveView] = useState<'notes' | 'graph'>('notes');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,25 +35,32 @@ export default function Home() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryTitle, setSummaryTitle] = useState<string>('AI Summary');
 
-  // Fetch notes and topics
+  // Fetch notes and topics - only when user is authenticated and token getter is set
   useEffect(() => {
+    if (!user || authLoading) {
+      return;
+    }
+
     const fetchData = async () => {
       try {
+        setLoading(true);
         const [notesData, topicsData] = await Promise.all([
           notesApi.getAll(),
           graphApi.getTopics(),
         ]);
-        setNotes(notesData);
-        setTopics(topicsData);
+        setNotes(notesData || []);
+        setTopics(topicsData || []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
+        setNotes([]);
+        setTopics([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [user, authLoading]);
 
   // Fetch graph data
   const fetchGraph = useCallback(async () => {
@@ -69,7 +84,7 @@ export default function Home() {
   }, [activeView, fetchGraph]);
 
   // Filter notes based on search
-  const filteredNotes = notes.filter(note =>
+  const filteredNotes = (notes || []).filter(note =>
     note.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -122,7 +137,7 @@ export default function Home() {
       });
       // Refresh notes
       const notesData = await notesApi.getAll();
-      setNotes(notesData);
+      setNotes(notesData || []);
     } catch (error) {
       console.error('Failed to update note:', error);
       alert('Failed to update note');
@@ -149,13 +164,28 @@ export default function Home() {
 
     try {
       await notesApi.delete(contextMenu.note._id);
-      setNotes(notes.filter(n => n._id !== contextMenu.note._id));
+      setNotes((notes || []).filter(n => n._id !== contextMenu.note._id));
     } catch (error) {
       console.error('Failed to delete note:', error);
       alert('Failed to delete note');
     }
     setContextMenu(null);
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
 
   return (
     <div className="flex min-h-screen bg-[#F8F6F4]">
@@ -177,13 +207,33 @@ export default function Home() {
                   className="w-full px-4 py-3 border border-[#D2E9E9] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#C4DFDF] focus:border-[#C4DFDF] text-gray-700 placeholder-gray-400 shadow-sm"
                 />
               </div>
-              <button
-                onClick={() => router.push('/notes/new')}
-                className="px-6 py-3 bg-[#38598b] text-white rounded-xl hover:bg-[#2a4569] transition-all duration-200 font-medium shadow-md hover:shadow-lg flex items-center gap-2"
-              >
-                <span className="text-lg">+</span>
-                <span>New Note</span>
-              </button>
+              <div className="flex items-center gap-4">
+                {user && (
+                  <div className="flex items-center gap-2">
+                    {user.photoURL && (
+                      <img
+                        src={user.photoURL}
+                        alt={user.displayName || 'User'}
+                        className="w-8 h-8 rounded-full"
+                      />
+                    )}
+                    <span className="text-sm text-gray-700">{user.displayName || user.email}</span>
+                  </div>
+                )}
+                <button
+                  onClick={logout}
+                  className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all"
+                >
+                  Logout
+                </button>
+                <button
+                  onClick={() => router.push('/notes/new')}
+                  className="px-6 py-3 bg-[#38598b] text-white rounded-xl hover:bg-[#2a4569] transition-all duration-200 font-medium shadow-md hover:shadow-lg flex items-center gap-2"
+                >
+                  <span className="text-lg">+</span>
+                  <span>New Note</span>
+                </button>
+              </div>
             </div>
 
             {/* Subheader */}
@@ -278,7 +328,7 @@ export default function Home() {
                     className="px-4 py-2.5 border border-[#D2E9E9] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#C4DFDF] focus:border-[#C4DFDF] text-gray-700 shadow-sm"
                   >
                     <option value="">All Topics</option>
-                    {topics.map(topic => (
+                    {(topics || []).map(topic => (
                       <option key={topic._id} value={topic._id}>
                         {topic.name}
                       </option>
@@ -287,7 +337,7 @@ export default function Home() {
                   {selectedTopic && (
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-[#E3F4F4] rounded-lg">
                       <span className="text-sm text-[#38598b] font-medium">
-                        Showing: {topics.find(t => t._id === selectedTopic)?.name}
+                        Showing: {(topics || []).find(t => t._id === selectedTopic)?.name}
                       </span>
                       <button
                         onClick={() => setSelectedTopic(null)}
@@ -314,7 +364,13 @@ export default function Home() {
                         })
                         .catch(error => {
                           console.error('Failed to generate summary:', error);
-                          setSummary('Failed to generate summary. Please make sure GEMINI_API_KEY is set in the backend environment variables.');
+                          const errorMessage = error.message || String(error);
+                          // Check if model is overloaded
+                          if (errorMessage.toLowerCase().includes('overloaded')) {
+                            setSummary('Try Again');
+                          } else {
+                            setSummary('Failed to generate summary. Please make sure GEMINI_API_KEY is set in the backend environment variables.');
+                          }
                         })
                         .finally(() => {
                           setSummaryLoading(false);

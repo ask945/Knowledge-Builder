@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+
 interface SummarySidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -7,6 +9,38 @@ interface SummarySidebarProps {
   loading: boolean;
   title?: string;
 }
+
+// Helper function to parse markdown bold syntax (**text**) and render as bold
+const parseMarkdownBold = (text: string): React.ReactNode => {
+  const parts: React.ReactNode[] = [];
+  const regex = /\*\*(.*?)\*\*/g;
+  let lastIndex = 0;
+  let match;
+  let keyCounter = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    // Add text before the match
+    if (match.index > lastIndex) {
+      const beforeText = text.substring(lastIndex, match.index);
+      if (beforeText) {
+        parts.push(<span key={`text-${keyCounter++}`}>{beforeText}</span>);
+      }
+    }
+    // Add the bold text
+    parts.push(<strong key={`bold-${keyCounter++}`}>{match[1]}</strong>);
+    lastIndex = regex.lastIndex;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    const remainingText = text.substring(lastIndex);
+    if (remainingText) {
+      parts.push(<span key={`text-${keyCounter++}`}>{remainingText}</span>);
+    }
+  }
+
+  return parts.length > 0 ? <>{parts}</> : text;
+};
 
 export default function SummarySidebar({
   isOpen,
@@ -44,7 +78,7 @@ export default function SummarySidebar({
         ) : summary ? (
           <div className="prose max-w-none">
             <div className="whitespace-pre-wrap text-gray-700 leading-relaxed text-sm">
-              {summary}
+              {parseMarkdownBold(summary)}
             </div>
           </div>
         ) : (

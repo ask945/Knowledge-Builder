@@ -12,6 +12,11 @@ const linkSchema = new mongoose.Schema(
       ref: 'Note',
       required: [true, 'Target note is required'],
     },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
   },
   {
     timestamps: true,
