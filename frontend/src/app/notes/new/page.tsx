@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { notesApi, ContentBlock, type Note, setAuthTokenGetter } from '@/lib/api';
 import SaveModal from '@/components/SaveModal';
@@ -8,6 +8,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import LoginPage from '@/components/LoginPage';
 
 export default function NewNotePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen bg-[#F8F6F4] items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#38598b] mb-4"></div>
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    }>
+      <NewNotePageContent />
+    </Suspense>
+  );
+}
+
+function NewNotePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading, getToken } = useAuth();
