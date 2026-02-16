@@ -398,7 +398,7 @@ export default function Home() {
       {/* Context Menu */}
       {contextMenu && (
         <div
-          className="fixed bg-white rounded-xl shadow-2xl border border-[#D2E9E9] py-2 z-50 min-w-[200px]"
+          className="fixed bg-white rounded-xl shadow-2xl border border-[#D2E9E9] py-2 z-50 min-w-50"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           <button

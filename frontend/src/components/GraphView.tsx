@@ -443,6 +443,8 @@ export default function GraphView({ data, onGraphChange, onSummarize }: GraphVie
     if (!hoverMenu || !onSummarize) return;
     const node = hoverMenu.node;
     
+    if (!node.type || (node.type !== 'topic' && node.type !== 'note')) return;
+    
     setHoverMenu(null);
     
     let nodeId: string;
@@ -581,7 +583,7 @@ export default function GraphView({ data, onGraphChange, onSummarize }: GraphVie
             top: hoverMenu.y,
             zIndex: 1000,
           }}
-          className="bg-white rounded-lg shadow-xl py-1 min-w-[200px] border border-gray-200"
+          className="bg-white rounded-lg shadow-xl py-1 min-w-50 border border-gray-200"
           onMouseEnter={() => {
             if (hoverTimeoutRef.current) {
               clearTimeout(hoverTimeoutRef.current);
@@ -685,7 +687,7 @@ export default function GraphView({ data, onGraphChange, onSummarize }: GraphVie
                 <span className="text-xs text-gray-400">▶</span>
               </div>
               {hoverMenu.showSubmenu && (
-                <div className="absolute left-full top-0 ml-1 bg-white rounded-lg shadow-xl py-1 min-w-[150px] border border-gray-200 z-10">
+                <div className="absolute left-full top-0 ml-1 bg-white rounded-lg shadow-xl py-1 min-w-37.5 border border-gray-200 z-10">
                   <div
                     className="px-4 py-2.5 cursor-pointer text-gray-700 hover:bg-gray-50 transition-colors rounded-t-lg"
                     onClick={handleAddNotePrevious}

@@ -355,7 +355,7 @@ export default function NoteViewPage() {
                     onPaste={(e) => handlePaste(index, e)}
                     onFocus={() => setFocusedIndex(index)}
                     placeholder={index === 0 ? "Start writing..." : ""}
-                    className="w-full p-2 border-none outline-none bg-transparent resize-none overflow-hidden min-h-[32px] placeholder-gray-400"
+                    className="w-full p-2 border-none outline-none bg-transparent resize-none overflow-hidden min-h-8 placeholder-gray-400"
                     rows={1}
                   />
                   <button
